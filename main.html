@@ -10,11 +10,23 @@
     <script src='master.js'></script>
     <script>
       // Add pop-ups for each marker
-      function onEachFeaturePopUp(feature, layer) {
+      function popUpTheTitle(feature, layer) {
         // does this feature have a property named title?
         if (feature.properties && feature.properties.title) {
             layer.bindPopup(feature.properties.title);
         }
+      }
+
+      // Don't draw every point in the world. Just California.
+      function pointInCalifornia(feature, layer) {
+        //if (feature.geometry && feature.geometry.coordinates) {
+          //return feature.geometry.coordinates[0]
+        //}
+        if (feature.properties && feature.properties.title) {
+          // Look for two patterns in the title.
+          return feature.properties.title.match(/^USA_CA/) || feature.properties.title.match(/^CZ/); 
+        }
+        return false
       }
 
       // Now start drawing
@@ -28,7 +40,8 @@
 
       // Using the onEachFeature option here, each point is a 'feature'
       geoJSONLayer = L.geoJSON(geojsonFeatureCollection, {
-        onEachFeature: onEachFeaturePopUp
+        filter: pointInCalifornia,
+        onEachFeature: popUpTheTitle
       }).addTo(map); // Replace this with customized json parsing
       
       //geoJSONLayer.addData();
