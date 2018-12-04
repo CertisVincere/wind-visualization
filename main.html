@@ -4,6 +4,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>  
   <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://d3js.org/d3-dsv.v1.min.js"></script>
 </head>
 <body>
   <div id="map" style='height: 1000px'>
@@ -13,7 +14,20 @@
       function popUpTheTitle(feature, layer) {
         // does this feature have a property named title?
         if (feature.properties && feature.properties.title) {
-            layer.bindPopup(feature.properties.title);
+            //layer.bindPopup(feature.properties.title);
+            // Let's see if d3 can get epw from the link.
+            var exampleEPWURL = 'https://energyplus.net/weather-download/asia_wmo_region_2/IND//IND_Dehradun.421110_ISHRAE/IND_Dehradun.421110_ISHRAE.epw'
+            // Must enter the index page using http://0.0.0.0:8000/main.html' due to CORS policy of Chrome
+            var exampleEPWURL_local = 'http://0.0.0.0:8000/IND_Dehradun.421110_ISHRAE.epw'
+            //var epw_raw = d3.csv.parseRows(exampleEPWURL);
+            var epw_raw = '';
+            // Use d3 to fetch the epw file.
+            d3.csv(exampleEPWURL_local)
+              .then(function(data) {
+                console.log(data);
+                epw_raw = data;
+              })
+            layer.bindPopup(epw_raw);
         }
       }
 
@@ -26,7 +40,7 @@
           // Look for two patterns in the title.
           return feature.properties.title.match(/^USA_CA/) || feature.properties.title.match(/^CZ/); 
         }
-        return false
+        return false;
       }
 
       // Now start drawing
