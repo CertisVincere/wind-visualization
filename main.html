@@ -1,22 +1,38 @@
 <html>
 <head>
   <title>ESPM 50AC Final Project: Wind Visualization Map</title>
-  <link rel="stylesheet" href="leaflet/leaflet.css">
-  <script src='leaflet/leaflet.js'></script>
-  <script src="d3.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>  
+  <script src="https://d3js.org/d3.v5.min.js"></script>
 </head>
 <body>
   <div id="map" style='height: 1000px'>
     <script src='master.js'></script>
     <script>
-      var map = L.map('map').setView([37.8716, -122.2727], 8);
+      // Add pop-ups for each marker
+      function onEachFeaturePopUp(feature, layer) {
+        // does this feature have a property named title?
+        if (feature.properties && feature.properties.title) {
+            layer.bindPopup(feature.properties.title);
+        }
+      }
+
+      // Now start drawing
+      var map = L.map('map').setView([37.8716, -122.2727], 11);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
-      L.geoJSON(master_json).addTo(map);
+      var geojsonFeatureCollection = master_json;
 
+      // Using the onEachFeature option here, each point is a 'feature'
+      geoJSONLayer = L.geoJSON(geojsonFeatureCollection, {
+        onEachFeature: onEachFeaturePopUp
+      }).addTo(map); // Replace this with customized json parsing
+      
+      //geoJSONLayer.addData();
+      // To be added
 
     </script>
   </div>
