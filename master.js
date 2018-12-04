@@ -1,5 +1,4 @@
-var master_json =
-{
+var master_json = {
     "type": "FeatureCollection",
     "features": [
 

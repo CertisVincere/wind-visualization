@@ -1,37 +1,19 @@
 <html>
 <head>
   <title>ESPM 50AC Final Project: Wind Visualization Map</title>
-  <script src='d3.min.js'></script>
-  <script src='master.js'></script>
+  <link rel="stylesheet" href="leaflet/leaflet.css">
+  <script src='leaflet/leaflet.js'></script>
+  <script src="d3.min.js"></script>
 </head>
 <body>
-  <script>
-var width = 700,
-    height = 580;
+  <div id="map" style="width: 1000px" style="height: 500px">
+    <script src="master.js" type="text/javascript"></script>
+    <script>
+      var map = new L.Map("map", {center: [37.8, -96.9], zoom: 4})
+        .addLayer(new L.TileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"));
 
-var svg = d3.select('body')
-  .append('svg')
-  .attr('width', width)
-  .attr('height', height);
 
-var g = svg.append('g');
-
-var albersProjection = d3.geoAlbers()
-  .scale(190000)
-  .rotate([71.057, 0])
-  .center([0, 42.313])
-  .translate([width/2, height/2]);
-
-var geoPath = d3.geoPath()
-    .projection(albersProjection);
-
-g.selectAll('path')
-  .data(master_json.features)
-  .enter()
-  .append('path')
-  .attr('fill', '#ccc')
-  .attr('d', geoPath);
-
-  </script>
+    </script>
+  </div>
 </body>
 </html>
