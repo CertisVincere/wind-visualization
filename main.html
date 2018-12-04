@@ -20,14 +20,15 @@
             // Must enter the index page using http://0.0.0.0:8000/main.html' due to CORS policy of Chrome
             var exampleEPWURL_local = 'http://0.0.0.0:8000/IND_Dehradun.421110_ISHRAE.epw'
             //var epw_raw = d3.csv.parseRows(exampleEPWURL);
-            var epw_raw = '';
+            var epw_raw;
             // Use d3 to fetch the epw file.
             d3.csv(exampleEPWURL_local)
               .then(function(data) {
-                console.log(data);
-                epw_raw = data;
+                //console.log(data[0]["LOCATION"]); // data is an array of dictionaries
+                epw_partial = data[0]["LOCATION"];
+                //console.log(epw_partial);
+                layer.bindPopup(epw_partial);
               })
-            layer.bindPopup(epw_raw);
         }
       }
 
