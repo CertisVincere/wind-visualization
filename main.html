@@ -12,7 +12,9 @@
   <div id="map"  style='height: 1000px; z-index: 1'></div> 
   <script src='master.js'></script>
   <script>
+    var epw_raw; // Make it global
     // ^ in-line styling is cursed!
+    // TODO: chart covers markers sometimes, move the chart to a more convenienet position.
     // The chart portion is forked from brandonhaydu's and caravinden's code.
     // Trying to understand https://bl.ocks.org/caravinden/d04238c4c9770020ff6867ee92c7dac1 and https://bl.ocks.org/Golodhros/6f8e6d1792416ee3770ff4ddd5c9594e
     //**************************chart*****************************************
@@ -103,7 +105,7 @@
         return d.county === countyFP;
       };
 
-      /*d3.csv('http://0.0.0.0:8000/IND_Dehradun.421110_ISHRAE.epw', row, data => {        
+      /*d3.csv('http://127.0.0.1:8000/IND_Dehradun.421110_ISHRAE.epw', row, data => {        
       //data = top5(data);
       //console.log(data);
       //data = data.filter(filterCriteria);
@@ -141,6 +143,26 @@
 
     var lastHoveredMarker;
 
+    //var exampleEPWURL = 'https://energyplus.net/weather-download/asia_wmo_region_2/IND//IND_Dehradun.421110_ISHRAE/IND_Dehradun.421110_ISHRAE.epw';
+    // Must enter the index page using http://127.0.0.1:8000/main.html' due to CORS policy of Chrome
+    var exampleEPWURL_local = 'http://127.0.0.1:8000/IND_Dehradun.421110_ISHRAE.epw';
+    //var epw_raw = d3.csv.parseRows(exampleEPWURL);
+    //var epw_raw;
+    // Use d3 to fetch the epw file.
+    let returnedEPW = d3.csv(exampleEPWURL_local)
+      .then(function(data) {
+        //epw_raw = data; // Register data to a global value
+        //console.log(data); // data is an array of dictionaries
+        columns = data["columns"]
+        var epw_partial = columns[1] + ' at ' + columns[6] + ', ' + columns[7];
+        //console.log(epw_partial);
+        return data
+      });
+    setTimeout(()=>{
+      console.log(returnedEPW);
+      returnedEPW = Promise.resolve(returnedEPW);
+    });
+    
 
     // Add pop-ups for each marker
     function popUpTheTitle(feature, marker) {
@@ -148,21 +170,9 @@
       if (feature.properties && feature.properties.title) {
         //marker.bindPopup(feature.properties.title);
         // Let's see if d3 can get epw from the link.
-        //var exampleEPWURL = 'https://energyplus.net/weather-download/asia_wmo_region_2/IND//IND_Dehradun.421110_ISHRAE/IND_Dehradun.421110_ISHRAE.epw';
-        // Must enter the index page using http://0.0.0.0:8000/main.html' due to CORS policy of Chrome
-        var exampleEPWURL_local = 'http://0.0.0.0:8000/IND_Dehradun.421110_ISHRAE.epw';
-        //var epw_raw = d3.csv.parseRows(exampleEPWURL);
-        //var epw_raw;
-        // Use d3 to fetch the epw file.
-        d3.csv(exampleEPWURL_local)
-          .then(function(data) {
-            //console.log(data[0]["LOCATION"]); // data is an array of dictionaries
-            epw_partial = data[0]["LOCATION"];
-            //console.log(epw_partial);
-            //marker.bindPopup(epw_partial);
-            marker.bindPopup(epw_partial);
-          })
-          
+        console.log(returnedEPW);
+        //marker.bindPopup(epw_partial);
+        marker.bindPopup(feature.properties.title);
         // Update the chart on mousehover
         marker.on('mouseover', function(e) {
           // TODO: Update the barChart object defined in above section
@@ -173,7 +183,7 @@
             console.log('Mouse hovered over ' + feature.properties.title); 
             lastHoveredMarker = feature.properties.title;
           } else {
-            console.log("Not updating, try another point.");
+            console.log("Not updating, try another marker.");
           }
         });
         marker.on('mouseover', function(e) {
