@@ -124,7 +124,7 @@
       //}
       if (feature.properties && feature.properties.title) {
         // Look for two patterns in the title.
-        return feature.properties.title.match(/^USA_CA/) || feature.properties.title.match(/^CZ/); 
+        return feature.properties.title.match(/^USA_CA/) || feature.properties.title.match(/^CZ\d/); 
       }
       return false;
     }
