@@ -6,8 +6,8 @@
   <script src="https://d3js.org/d3.v5.min.js"></script>
 </head>
 <body>
-  <div style='position: absolute; left: 0px; z-index: 2'><svg id='leftChart' width="480" height="250"></svg></div>
-  <div style='position: absolute; right: 0px; z-index: 2;'><svg id='rightChart' width="480" height="250"></svg></div>
+  <div style='position: absolute; left: 60px; z-index: 2'><svg id='leftChart' width="650" height="450"></svg></div>
+  <div style='position: absolute; right: 0px; z-index: 2;'><svg id='rightChart' width="650" height="450"></svg></div>
   <div id="map"  style='height: 1000px; z-index: 1'></div> 
   <script src='master.js'></script>
   <script>
@@ -17,71 +17,88 @@
     // Trying to understand https://bl.ocks.org/caravinden/d04238c4c9770020ff6867ee92c7dac1 and https://bl.ocks.org/Golodhros/6f8e6d1792416ee3770ff4ddd5c9594e
     //**************************chart*****************************************
     //var barChart = function(marker, inputData) {
-    var barChart = function(dataFileLocation, chartID)  {
+    var barChart = function(dataFileID, chartID)  {
+      var CSVURL;
+      if (dataFileID)
+        if (getURLFromFileID(dataFileID)) 
+          CSVURL = getURLFromFileID(dataFileID);
+        else return;
+      else return;
+      
+      
       var svg = d3.select('#' + chartID);
-      var margin = {top: 20, right: 20, bottom: 30, left: 20},
+      svg.selectAll("*").remove();
+
+      var margin = {top: 20, right: 20, bottom: 30, left: 40},
           width = +svg.attr("width") - margin.left - margin.right,
           height = +svg.attr("height") - margin.top - margin.bottom;
 
-      var x = d3.scaleBand().rangeRound([0, width]).padding(0.1),
+      var x = d3.scaleLinear().range([0, width]),
           y = d3.scaleLinear().rangeRound([height, 0]);
 
       var g = svg.append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      
+      //var months = ["Jan", "Feb", "Mar", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-      //console.log(dataFileLocation);
-      d3.tsv(dataFileLocation)
+console.log(CSVURL)
+      d3.csv(CSVURL)
           .then((data) => {
-              return data.map((d) => {
-                d.potential = +d.potential;
+            x.domain([1, 12]); // The months
+            y.domain([0, 1]);
 
-                return d;  
-              });
-          })
-          .then((data) => {
-              x.domain(data.map(function(d) { return d.month; }));
-              y.domain([0, d3.max(data, function(d) { return d.potential; })]);
+            // x-axis
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
 
-              g.append("g")
-                  .attr("class", "axis axis--x")
-                  .attr("transform", "translate(0," + height + ")")
-                  .call(d3.axisBottom(x));
+            // y-axis
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y).ticks(10, "%"))
+              .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", "0.71em")
+                .attr("text-anchor", "end")
+                .text("Wspd");
 
-              g.append("g")
-                  .attr("class", "axis axis--y")
-                  .call(d3.axisLeft(y).ticks(10, "%"))
-                .append("text")
-                  .attr("transform", "rotate(-90)")
-                  .attr("y", 6)
-                  .attr("dy", "0.71em")
-                  .attr("text-anchor", "end")
-                  .text("potential");
-
-              g.selectAll(".bar")
-                .data(data)
-                .enter().append("rect")
-                  .attr("class", "bar")
-                  .attr("x", function(d) { return x(d.month); })
-                  .attr("y", function(d) { return y(d.potential); })
-                  .attr("width", x.bandwidth())
-                  .attr("height", function(d) { return height - y(d.potential); });
+            // Now we are doing a scatterplot since we have 8k+ points!
+            // bl.ocks.org/weiglemc/6185069
+            g.selectAll(".dot")
+              .data(data)
+              .enter().append("circle")
+                .attr("class", "dot")
+                .attr("r", 3.5)
+                //.attr("cx", function(d) { return x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)); })
+                .attr("cx", d => x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)))
+                .attr("cy", function(d) { return y(d["Wspd (m/s)"] / 20); }) // learnjsdata.com/read_data.html
+                //.attr("width", x.bandwidth())
+                //.attr("height", function(d) { return d["Wspd (m/s)"]; });
           })
           .catch((error) => {
               throw error;
           });
     };
-    //barChart("data.tsv"); // Draw the frame.
     //**************************chart*****************************************
 
-    var lastHoveredMarker = ['725920TYA', 'USA_CA_Arcata.AP.725945_TMY3']; // CZ01RV2 will not be parsed for now.
+    // Default barChart data source. CZ01RV2 will not be parsed for now.
+    // 1: this entry is updated on hovering, with the left chart updated
+    // 2: this entry is updated on clicking, with the left chart updated
+    var lastHoveredMarkerID = ['725920TYA', '725945TYA']; 
+    barChart(lastHoveredMarkerID[0], "rightChart"); // Initialize the right  chart
+    barChart(lastHoveredMarkerID[1], "leftChart"); // Initialize the left charts
+
+
     // TMY3 dataaset could be found at https://energyplus.net/weather-region/north_and_central_america_wmo_region_4/USA/CA
     // Or https://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html#
     // Must enter the index page using http://127.0.0.1:8000/main.html' due to CORS policy of Chrome
     //var exampleEPWURL_local = 'http://127.0.0.1:8000/IND_Dehradun.421110_ISHRAE.epw';
-    var reddingCSVURL = 'http://127.0.0.1:8000/TMY3_CSV/725920TYA_noFirstLine.CSV'
+    // var reddingCSVURL = 'http://127.0.0.1:8000/TMY3_CSV/725920TYA_noFirstLine.CSV'
 
     function extractDataFileID(inputString) {
-      console.log(inputString);
+      //console.log(inputString.toString());
 
       if (inputString.match(/^CZ/))
         return inputString.match(/^CZ\d{2}RV2/).toString(); // CA Weather Zone ID
@@ -91,63 +108,53 @@
       return null; // If no matching fuond.
     }
 
+    function getURLFromFileID(ID) {
+      if (ID.match(/^CV/)) {
+        console.log('Sorry, parsing Weather Zone EPW is not yet implemented.')
+        return null;
+      }
+
+      if (ID.match(/^\d{6}/)) {
+        // Without the first line the provided CSV becomes RFC4180-compliant.
+        return 'http://127.0.0.1:8000/TMY3_CSV/' + ID + '_noFirstLine.CSV'; 
+      }
+
+      return null
+    }
+
     // Add pop-ups for each marker
-    function popUpTheTitle(feature, marker) {
+    function addMarkerEvents(feature, marker) {
+      var popup = L.popup();
       // does this feature have a property named title?
       if (feature.properties && feature.properties.title) {
-        marker.bindPopup(feature.properties.title);
+        var title = new String(feature.properties.title);
+        var ID = extractDataFileID(title);
+
         // Update the chart on mousehover
         marker.on('mouseover', function(e) {
-          // TODO: Update the barChart object defined in above section
-          // Better remember the last pointed marker to avoid
-          //barChart
-          if (!lastHoveredMarker || lastHoveredMarker != feature.properties.title) { // Only update on new points
-            var title = new String(feature.properties.title);
-            var ID = extractDataFileID(title);
+          if (lastHoveredMarkerID[0] != ID) { // Only update when hovering on a new point
             console.log('Mouse hovered over ' + title); 
             console.log('The ID of this marker is ' + ID);
-            //lastHoveredMarker1 = !() ? ;
-
-            /*d3.csv(exampleEPWURL_local) // TODO: Feed marker-specific data
-              .then(function(raw_epw) {
-                columns = raw_epw["columns"]
-                var epw_partial = columns[1] + ' at ' + columns[6] + ', ' + columns[7];
-                console.log(epw_partial);
-
-                var parsedCol = [...Array(12).keys()]; // WindSpeed. Using predefined values for now. Parse from CSV later.
-                var months = ["Jan", "Feb", "Mar", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                
-                barChart("data.tsv", "rightChart");
-                barChart("data.tsv", "leftChart");
-              });*/
-            if (ID.match(/^CV/)) {
-              console.log('Sorry, parsing Weather Zone EPW is not yet implemented.')
-              return;
-            }
-            if (ID.match(/^\d{6}/)) {
-              var CSVURL = 'http://127.0.0.1:8000/TMY3_CSV/' + ID + '_noFirstLine.CSV';
-              d3.csv(CSVURL)
-                .then(function(data) {
-                  console.log(data);
-                  
-                });
-            }
-
-          } else {
-            console.log("Not updating, try another marker.");
-          }
+            barChart(ID, "leftChart");
+          } else console.log("Try a new marker to update the barChart.");
         });
-        //marker.on('mouseover', function(e) {
+        /*marker.on('mouseover', function(e) {
            // We are not flushing the chart on mouseover for now.
-        //});
+        });*/
+        //marker.bindPopup(title); // Pop-up on clicking.
+        
+        marker.on('click', function(e) {
+          console.log('Mouse clicked onr ' + title); 
+          console.log('The ID of this marker is ' + ID);
+          barChart(ID, "rightChart");
+        });
+        // 
+        //marker.bindPopup(title); // Pop-up on clicking.
       }
     }
 
     // Don't draw every point in the world. Just California.
     function pointInCalifornia(feature, marker) {
-      //if (feature.geometry && feature.geometry.coordinates) {
-        //return feature.geometry.coordinates[0]
-      //}
       if (feature.properties && feature.properties.title) {
         // Look for two patterns in the title.
         return feature.properties.title.match(/^USA_CA/) || feature.properties.title.match(/^CZ\d/); 
@@ -167,7 +174,7 @@
     // Using the onEachFeature option here, each point is a 'feature'
     geoJSONLayer = L.geoJSON(geojsonFeatureCollection, {
       filter: pointInCalifornia,
-      onEachFeature: popUpTheTitle
+      onEachFeature: addMarkerEvents
     }).addTo(map); // Replace this with customized json parsing
     
     //geoJSONLayer.addData();
