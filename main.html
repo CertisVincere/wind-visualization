@@ -20,117 +20,56 @@
     //**************************chart*****************************************
     //var barChart = function(marker, inputData) {
     var barChart = function(xVal, yVal, raw_csv)  {
-      //const xValue = d => d.value;
-      const xValue = xVal;
-      const xLabel = 'X-axis of the wind chart';
-      //const yValue = d => d.name;
-      const yValue = yVal;
-      const yLabel = 'Candidate';
-      const margin = { left: 150, right: 30, top: 5, bottom: 75 };
+      var svg = d3.select("svg"),
+          margin = {top: 20, right: 20, bottom: 30, left: 100},
+          width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom;
 
-      
-      const svg = d3.select('svg');
-      const svgRemove = svg.selectAll('*').remove();
-      const width = svg.attr('width');
-      const height = svg.attr('height');
-      const innerWidth = width - margin.left - margin.right;
-      const innerHeight = height - margin.top - margin.bottom;
+      var x = d3.scaleBand().rangeRound([0, width]).padding(0.1),
+          y = d3.scaleLinear().rangeRound([height, 0]);
 
-      const g = svg.append('g')
-          .attr('transform', `translate(${margin.left},${margin.top})`);
-      const xAxisG = g.append('g')
-          .attr('transform', `translate(0, ${innerHeight})`);
-      const yAxisG = g.append('g');
+      var g = svg.append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-      xAxisG.append('text')
-          .attr('class', 'axis-label')
-          .attr('x', innerWidth / 2)
-          .attr('x', 30)
-          .attr('y', 55)
-          .text(xLabel);
+      d3.tsv("data.tsv")
+          .then((data) => {
+              return data.map((d) => {
+                d.potential = +d.potential;
 
-      const xScale = d3.scaleLinear();
-      const yScale = d3.scaleBand()
-        .paddingInner(0.3)
-        .paddingOuter(0);
+                return d;  
+              });
+          })
+          .then((data) => {
+              x.domain(data.map(function(d) { return d.month; }));
+              y.domain([0, d3.max(data, function(d) { return d.potential; })]);
 
-      const xTicks = 5;
-      const xAxis = d3.axisBottom()
-        .scale(xScale)
-        .ticks(xTicks)
-        .tickPadding(5)
-        .tickFormat(d3.format('.0s'))
-        .tickSize(-innerHeight);
+              g.append("g")
+                  .attr("class", "axis axis--x")
+                  .attr("transform", "translate(0," + height + ")")
+                  .call(d3.axisBottom(x));
 
-      const yAxis = d3.axisLeft()
-        .scale(yScale)
-        .tickPadding(5)
-        .tickSize(-innerWidth);
+              g.append("g")
+                  .attr("class", "axis axis--y")
+                  .call(d3.axisLeft(y).ticks(10, "%"))
+                .append("text")
+                  .attr("transform", "rotate(-90)")
+                  .attr("y", 6)
+                  .attr("dy", "0.71em")
+                  .attr("text-anchor", "end")
+                  .text("potential");
 
-      /*const row = d => {
-        return {
-          county: d.countyfp10,
-          attributes:[
-          {
-            name: 'Clinton', 
-            value: Number(d.pres_clinton)
-          },
-          {
-            name: 'Trump', 
-            value: Number(d.pres_trump)
-        },
-          {
-            name: 'Johnson', 
-            value: Number(d.pres_johnson)
-        },
-          {
-            name: 'Stein', 
-            value: Number(d.pres_stein)
-        },
-          {
-            name: 'Lariva', 
-            value: Number(d.pres_lariva)
-        },
-          {
-            name: 'Other', 
-            value: Number(d.pres_other)
-        }
-      ]
-        };
-      };*/
-
-      //const top5 = data => data.slice(0, 5);      
-      
-      //function filterCriteria(d) {
-      //	return d.county === '037';
-      //};
-      function filterCriteria(d) {
-        return d.county === countyFP;
-      };
-
-      yScale
-        //.domain(data.map(yValue).reverse())
-        .domain([...Array(15).keys()])
-        .range([innerHeight, 0]);
-
-      xScale
-        .domain(["Jan", "Feb", "Mar", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
-        .range([0, innerWidth])
-        .nice(xTicks);
-
-      g.selectAll('rect')
-        .enter().append('rect')
-          .attr('x', 0)
-          .attr('y', yScale(12))
-          .attr('width', d => xScale(100))
-          .attr('height', d => yScale(12))
-          .attr('fill', 'steelblue');
-      
-
-      xAxisG.call(xAxis);
-
-      yAxisG.call(yAxis);
-      //yAxisG.selectAll('.tick line').remove();
+              g.selectAll(".bar")
+                .data(data)
+                .enter().append("rect")
+                  .attr("class", "bar")
+                  .attr("x", function(d) { return x(d.month); })
+                  .attr("y", function(d) { return y(d.potential); })
+                  .attr("width", x.bandwidth())
+                  .attr("height", function(d) { return height - y(d.potential); });
+          })
+          .catch((error) => {
+              throw error;
+          });
     };
     barChart(); // Draw the frame.
     //**************************chart*****************************************
@@ -157,15 +96,15 @@
             lastHoveredMarker = feature.properties.title;
 
             d3.csv(exampleEPWURL_local)
-              .then(function(raw_csv) {
-                columns = raw_csv["columns"]
+              .then(function(raw_epw) {
+                columns = raw_epw["columns"]
                 var epw_partial = columns[1] + ' at ' + columns[6] + ', ' + columns[7];
                 console.log(epw_partial);
 
                 var parsedCol = [...Array(12).keys()]; // WindSpeed. Using predefined values for now. Parse from CSV later.
                 var months = ["Jan", "Feb", "Mar", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 
-                barChart(parsedCol, months, raw_csv);
+                barChart(parsedCol, months, raw_epw);
               });
 
           } else {
