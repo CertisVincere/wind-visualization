@@ -70,7 +70,9 @@
                 .attr("r", 3.5)
                 //.attr("cx", function(d) { return x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)); }) // Could use scaltTime to print the months
                 .attr("cx", d => x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)))
-                .attr("cy", function(d) { return y(d["Wspd (m/s)"] / 20); }) // learnjsdata.com/read_data.html
+                .attr("cy", d => y(d["Wspd (m/s)"] / 20));
+                //.attr("cy", function(d) { return (d["Wspd (m/s)"] > 5) ? y(d["Wspd (m/s)"] / 20) : y(0); }) // learnjsdata.com/read_data.html
+                // For the bar chart
                 //.attr("width", x.bandwidth())
                 //.attr("height", function(d) { return d["Wspd (m/s)"]; });
           })
