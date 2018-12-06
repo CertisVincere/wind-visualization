@@ -25,7 +25,6 @@
         else return;
       else return;
       
-      
       var svg = d3.select('#' + chartID);
       svg.selectAll("*").remove();
 
@@ -38,10 +37,8 @@
 
       var g = svg.append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-      
-      //var months = ["Jan", "Feb", "Mar", "April", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-console.log(CSVURL)
+      console.log('Loading ' + CSVURL);
       d3.csv(CSVURL)
           .then((data) => {
             x.domain([1, 12]); // The months
@@ -71,7 +68,7 @@ console.log(CSVURL)
               .enter().append("circle")
                 .attr("class", "dot")
                 .attr("r", 3.5)
-                //.attr("cx", function(d) { return x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)); })
+                //.attr("cx", function(d) { return x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)); }) // Could use scaltTime to print the months
                 .attr("cx", d => x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)))
                 .attr("cy", function(d) { return y(d["Wspd (m/s)"] / 20); }) // learnjsdata.com/read_data.html
                 //.attr("width", x.bandwidth())
@@ -83,23 +80,19 @@ console.log(CSVURL)
     };
     //**************************chart*****************************************
 
+    //**************************map*****************************************
     // Default barChart data source. CZ01RV2 will not be parsed for now.
-    // 1: this entry is updated on hovering, with the left chart updated
-    // 2: this entry is updated on clicking, with the left chart updated
-    var lastHoveredMarkerID = ['725920TYA', '725945TYA']; 
+    // 0: this entry is updated on hovering, with the right chart updated
+    // 1: this entry is updated on clicking, with the left chart updated
+    var lastHoveredMarkerID = ['725920TYA', '725945TYA']; // The default stations appointed by teammates
     barChart(lastHoveredMarkerID[0], "rightChart"); // Initialize the right  chart
     barChart(lastHoveredMarkerID[1], "leftChart"); // Initialize the left charts
 
 
     // TMY3 dataaset could be found at https://energyplus.net/weather-region/north_and_central_america_wmo_region_4/USA/CA
     // Or https://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html#
-    // Must enter the index page using http://127.0.0.1:8000/main.html' due to CORS policy of Chrome
-    //var exampleEPWURL_local = 'http://127.0.0.1:8000/IND_Dehradun.421110_ISHRAE.epw';
-    // var reddingCSVURL = 'http://127.0.0.1:8000/TMY3_CSV/725920TYA_noFirstLine.CSV'
 
     function extractDataFileID(inputString) {
-      //console.log(inputString.toString());
-
       if (inputString.match(/^CZ/))
         return inputString.match(/^CZ\d{2}RV2/).toString(); // CA Weather Zone ID
       else
@@ -113,13 +106,11 @@ console.log(CSVURL)
         console.log('Sorry, parsing Weather Zone EPW is not yet implemented.')
         return null;
       }
-
       if (ID.match(/^\d{6}/)) {
         // Without the first line the provided CSV becomes RFC4180-compliant.
-        return 'http://127.0.0.1:8000/TMY3_CSV/' + ID + '_noFirstLine.CSV'; 
+        return 'TMY3_CSV/' + ID + '_noFirstLine_windInfoCol.csv'; 
       }
-
-      return null
+      return null;
     }
 
     // Add pop-ups for each marker
@@ -133,6 +124,7 @@ console.log(CSVURL)
         // Update the chart on mousehover
         marker.on('mouseover', function(e) {
           if (lastHoveredMarkerID[0] != ID) { // Only update when hovering on a new point
+            lastHoveredMarkerID[0] = ID;
             console.log('Mouse hovered over ' + title); 
             console.log('The ID of this marker is ' + ID);
             barChart(ID, "leftChart");
@@ -141,15 +133,15 @@ console.log(CSVURL)
         /*marker.on('mouseover', function(e) {
            // We are not flushing the chart on mouseover for now.
         });*/
-        //marker.bindPopup(title); // Pop-up on clicking.
-        
         marker.on('click', function(e) {
           console.log('Mouse clicked onr ' + title); 
           console.log('The ID of this marker is ' + ID);
-          barChart(ID, "rightChart");
+          if (lastHoveredMarkerID[1] != ID) {
+            lastHoveredMarkerID[1] = ID;
+            barChart(ID, "rightChart");
+          }
         });
-        // 
-        //marker.bindPopup(title); // Pop-up on clicking.
+        marker.bindPopup(title); // Pop-up on clicking.
       }
     }
 
@@ -171,15 +163,12 @@ console.log(CSVURL)
 
     var geojsonFeatureCollection = master_json;
 
-    // Using the onEachFeature option here, each point is a 'feature'
+    // Using the onEachFeature option here, each point is a 'feature', translated into a marker by geoJSON
     geoJSONLayer = L.geoJSON(geojsonFeatureCollection, {
       filter: pointInCalifornia,
       onEachFeature: addMarkerEvents
     }).addTo(map); // Replace this with customized json parsing
-    
-    //geoJSONLayer.addData();
-    // To be added
-
+    //**************************map*****************************************
   </script>
 </body>
 </html>
