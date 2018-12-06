@@ -1,0 +1,174 @@
+<html>
+<head>
+  <title>ESPM 50AC Final Project: Wind Visualization Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>  
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+<body>
+  <div style='position: absolute; left: 60px; z-index: 2'><svg id='leftChart' width="650" height="450"></svg></div>
+  <div style='position: absolute; right: 0px; z-index: 2;'><svg id='rightChart' width="650" height="450"></svg></div>
+  <div id="map"  style='height: 1000px; z-index: 1'></div> 
+  <script src='master.js'></script>
+  <script>
+    // ^ in-line styling is cursed!
+    // TODO: chart covers markers sometimes, move the chart to a more convenienet position.
+    // The chart portion is forked from brandonhaydu's and caravinden's code.
+    // Trying to understand https://bl.ocks.org/caravinden/d04238c4c9770020ff6867ee92c7dac1 and https://bl.ocks.org/Golodhros/6f8e6d1792416ee3770ff4ddd5c9594e
+    //**************************chart*****************************************
+    //var barChart = function(marker, inputData) {
+    var barChart = function(dataFileID, chartID)  {
+      var CSVURL;
+      if (dataFileID)
+        if (getURLFromFileID(dataFileID)) 
+          CSVURL = getURLFromFileID(dataFileID);
+        else return;
+      else return;
+      
+      var svg = d3.select('#' + chartID);
+      svg.selectAll("*").remove();
+
+      var margin = {top: 20, right: 20, bottom: 30, left: 40},
+          width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom;
+
+      var x = d3.scaleLinear().range([0, width]),
+          y = d3.scaleLinear().rangeRound([height, 0]);
+
+      var g = svg.append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      console.log('Loading ' + CSVURL);
+      d3.csv(CSVURL)
+          .then((data) => {
+            x.domain([1, 12]); // The months
+            y.domain([0, 1]);
+
+            // x-axis
+            g.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            // y-axis
+            g.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y).ticks(10, "%"))
+              .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", "0.71em")
+                .attr("text-anchor", "end")
+                .text("Wspd");
+
+            // Now we are doing a scatterplot since we have 8k+ points!
+            // bl.ocks.org/weiglemc/6185069
+            g.selectAll(".dot")
+              .data(data)
+              .enter().append("circle")
+                .attr("class", "dot")
+                .attr("r", 3.5)
+                //.attr("cx", function(d) { return x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)); }) // Could use scaltTime to print the months
+                .attr("cx", d => x(d["Date (MM/DD/YYYY)"].toString().substring(0, 2)))
+                .attr("cy", function(d) { return y(d["Wspd (m/s)"] / 20); }) // learnjsdata.com/read_data.html
+                //.attr("width", x.bandwidth())
+                //.attr("height", function(d) { return d["Wspd (m/s)"]; });
+          })
+          .catch((error) => {
+              throw error;
+          });
+    };
+    //**************************chart*****************************************
+
+    //**************************map*****************************************
+    // Default barChart data source. CZ01RV2 will not be parsed for now.
+    // 0: this entry is updated on hovering, with the right chart updated
+    // 1: this entry is updated on clicking, with the left chart updated
+    var lastHoveredMarkerID = ['725920TYA', '725945TYA']; // The default stations appointed by teammates
+    barChart(lastHoveredMarkerID[0], "rightChart"); // Initialize the right  chart
+    barChart(lastHoveredMarkerID[1], "leftChart"); // Initialize the left charts
+
+
+    // TMY3 dataaset could be found at https://energyplus.net/weather-region/north_and_central_america_wmo_region_4/USA/CA
+    // Or https://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html#
+
+    function extractDataFileID(inputString) {
+      if (inputString.match(/^CZ/))
+        return inputString.match(/^CZ\d{2}RV2/).toString(); // CA Weather Zone ID
+      else
+        if (inputString.match(/\d{6}_*[A-Z]{3}/))
+          return inputString.toString().match(/\d{6}/)[0] + "TYA"; // TMY3 weather station ID
+      return null; // If no matching fuond.
+    }
+
+    function getURLFromFileID(ID) {
+      if (ID.match(/^CV/)) {
+        console.log('Sorry, parsing Weather Zone EPW is not yet implemented.')
+        return null;
+      }
+      if (ID.match(/^\d{6}/)) {
+        // Without the first line the provided CSV becomes RFC4180-compliant.
+        return 'TMY3_CSV/' + ID + '_noFirstLine_windInfoCol.csv'; 
+      }
+      return null;
+    }
+
+    // Add pop-ups for each marker
+    function addMarkerEvents(feature, marker) {
+      var popup = L.popup();
+      // does this feature have a property named title?
+      if (feature.properties && feature.properties.title) {
+        var title = new String(feature.properties.title);
+        var ID = extractDataFileID(title);
+
+        // Update the chart on mousehover
+        marker.on('mouseover', function(e) {
+          if (lastHoveredMarkerID[0] != ID) { // Only update when hovering on a new point
+            lastHoveredMarkerID[0] = ID;
+            console.log('Mouse hovered over ' + title); 
+            console.log('The ID of this marker is ' + ID);
+            barChart(ID, "leftChart");
+          } else console.log("Try a new marker to update the barChart.");
+        });
+        /*marker.on('mouseover', function(e) {
+           // We are not flushing the chart on mouseover for now.
+        });*/
+        marker.on('click', function(e) {
+          console.log('Mouse clicked onr ' + title); 
+          console.log('The ID of this marker is ' + ID);
+          if (lastHoveredMarkerID[1] != ID) {
+            lastHoveredMarkerID[1] = ID;
+            barChart(ID, "rightChart");
+          }
+        });
+        marker.bindPopup(title); // Pop-up on clicking.
+      }
+    }
+
+    // Don't draw every point in the world. Just California.
+    function pointInCalifornia(feature, marker) {
+      if (feature.properties && feature.properties.title) {
+        // Look for two patterns in the title.
+        return feature.properties.title.match(/^USA_CA/) || feature.properties.title.match(/^CZ\d/); 
+      }
+      return false;
+    }
+
+    // Now start drawing with leaflet.js
+    var map = L.map('map').setView([37.8716, -122.2727], 7);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var geojsonFeatureCollection = master_json;
+
+    // Using the onEachFeature option here, each point is a 'feature', translated into a marker by geoJSON
+    geoJSONLayer = L.geoJSON(geojsonFeatureCollection, {
+      filter: pointInCalifornia,
+      onEachFeature: addMarkerEvents
+    }).addTo(map); // Replace this with customized json parsing
+    //**************************map*****************************************
+  </script>
+</body>
+</html>
